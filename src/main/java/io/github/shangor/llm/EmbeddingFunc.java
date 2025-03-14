@@ -5,4 +5,5 @@ public interface EmbeddingFunc {
     int getMaxTokenSize();
     int getConcurrentLimit();
     float[] convert(String input);
+    float[] convert(String input, String model);
 }

@@ -35,6 +35,11 @@ public class OllamaEmbeddingFunc implements EmbeddingFunc {
 
     @Override
     public float[] convert(String input) {
+        return this.convert(input, this.model);
+    }
+
+    @Override
+    public float[] convert(String input, String model) {
         Map<String, Object> body = Map.of("model", model, "input", input);
         log.info("ollama embedding request: {} - {}", url, body);
         var tk = TimeKeeper.start();
