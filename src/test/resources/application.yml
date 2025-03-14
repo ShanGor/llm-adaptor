@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: llm-adapter
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test-ollama-completion
+
+llm:
+  embedding:
+    provider: ollama
+    model: bge-m3
+    dimension: 1024
+    max-token-size: 8192
+    concurrent-limit: 16
+  completion:
+    provider: ollama
+    model: qwen2.5:0.5b
+---
+spring:
+  config:
+    activate:
+      on-profile: test-zhipu-completion
+
+
+llm:
+  completion:
+    provider: zhipu
+    api-key: ${ZHIPU_API_KEY:}
+    model: glm-4-flashx
