@@ -3,6 +3,7 @@ package io.github.shangor.llm.impl;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.shangor.llm.LlmCompletionFunc;
+import io.github.shangor.llm.pojo.OpenAiCompletionRequest;
 import io.github.shangor.llm.pojo.OpenAiLlmResult;
 import io.github.shangor.llm.pojo.OpenAiLlmStreamResult;
 import io.github.shangor.llm.service.HttpService;
@@ -20,9 +21,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.net.URI;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
@@ -159,5 +158,66 @@ public class OllamaCompletionFunc extends LlmCompletionFunc {
         protected Long evalCount;
         @JsonProperty("eval_duration")
         protected Long evalDuration;
+    }
+
+    @Data
+    public static class OllamaRequest {
+        private String model;
+        private List<CompletionMessage> messages;
+        private String format = "text"; // could be "json" or "text"
+        private boolean stream;
+        private Options options;
+
+        public static OllamaRequest fromOpenAiRequest(OpenAiCompletionRequest request) {
+            var ollamaRequest = new OllamaRequest();
+            ollamaRequest.setModel(request.getModel());
+
+            ollamaRequest.setFormat(request.getFormat());
+            if (null == request.getStream()) {
+                ollamaRequest.setStream(false);
+            } else {
+                ollamaRequest.setStream(request.getStream());
+            }
+
+            List<CompletionMessage> messages = new ArrayList<>();
+            ollamaRequest.setMessages(messages);
+            for (var messageReq : request.getMessages()) {
+                CompletionMessage message = new CompletionMessage();
+                message.setRole((String) messageReq.get("role"));
+                var content = messageReq.get("content");
+                var imageList = new LinkedList<String>();
+                if (content instanceof String messageText) {
+                    message.setContent(messageText);
+                } else if (content instanceof List contents) {
+                    for (var item : contents) {
+                        if (item instanceof Map contentItem) {
+                            String contentType = (String) contentItem.get("type");
+                            if ("text".equals(contentType)) {
+                                message.setContent((String) contentItem.get("text"));
+                            } else if ("image_url".equals(contentType)) {
+                                var list = contentItem.get("image_url");
+                                if (list != null && list instanceof Map imageUrl) {
+                                    var url = (String) imageUrl.get("url");
+                                    if (url.startsWith("data:")) {
+                                        imageList.add(url.split(",")[1]);
+                                    } else {
+                                        imageList.add(url);
+                                    }
+                                }
+                            }
+                        }
+
+                    }
+                }
+                if (!imageList.isEmpty()) {
+                    message.setImages(imageList);
+                }
+
+                messages.add(message);
+            }
+
+            return ollamaRequest;
+
+        }
     }
 }

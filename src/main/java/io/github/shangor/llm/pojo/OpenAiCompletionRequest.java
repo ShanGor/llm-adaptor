@@ -9,11 +9,12 @@ import java.util.Map;
 @Data
 public class OpenAiCompletionRequest {
     private String model;
-    private List<? extends RequestMessage> messages;
+    private List<Map<String, Object>> messages;
     private Integer max_completion_tokens;
     private Boolean logprobs = false;
     private Boolean stream = true;
     private Double temperature = 1.0;
+    private String format = "text";
     private Map<String, Object> stream_options = Map.of("include_usage", true);
 
     @Data

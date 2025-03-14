@@ -66,7 +66,7 @@ public abstract class LlmCompletionFunc {
 
     @Data
     public static class Options {
-        private float temperature = 0.2f;
+        private Double temperature = 1.0;
         private boolean stream = false;
         private String model;
     }
