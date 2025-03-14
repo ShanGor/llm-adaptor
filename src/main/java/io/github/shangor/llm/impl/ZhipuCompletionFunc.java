@@ -55,7 +55,7 @@ public class ZhipuCompletionFunc extends LlmCompletionFunc {
         log.info("Zhipu request with messages list {}", messages.size());
         var tk = TimeKeeper.start();
         var result = httpService.post(url, headers,
-                Map.of("model", model,
+                Map.of("model", LlmCompletionFunc.getModel(options, model),
                         "messages", messages,
                         "temperature", options.getTemperature(),
                         "stream", options.isStream()),
@@ -70,7 +70,7 @@ public class ZhipuCompletionFunc extends LlmCompletionFunc {
         AtomicReference<String> requestId = new AtomicReference<>("");
         AtomicReference<OpenAiLlmResult.Usage> usage = new AtomicReference<>(null);
         return httpService.postSeverSentEvent(url, headers,
-                Map.of("model", model,
+                Map.of("model", LlmCompletionFunc.getModel(options, model),
                         "messages", messages,
                         "temperature", options.getTemperature(),
                         "stream", true), false)

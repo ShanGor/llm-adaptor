@@ -2,6 +2,7 @@ package io.github.shangor.llm;
 
 import io.github.shangor.llm.pojo.OpenAiLlmResult;
 import io.github.shangor.llm.pojo.OpenAiLlmStreamResult;
+import io.micrometer.common.util.StringUtils;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,6 +22,13 @@ public abstract class LlmCompletionFunc {
     protected Options options = new Options();
     public OpenAiLlmResult complete(List<CompletionMessage> messages) {
         return complete(messages, options);
+    }
+
+    public static String getModel(Options options, String model) {
+        if (StringUtils.isBlank(options.getModel())) {
+            return model;
+        }
+        return options.getModel();
     }
 
     public abstract OpenAiLlmResult complete(List<CompletionMessage> messages, Options options);
@@ -60,6 +68,7 @@ public abstract class LlmCompletionFunc {
     public static class Options {
         private float temperature = 0.2f;
         private boolean stream = false;
+        private String model;
     }
 
     @Data

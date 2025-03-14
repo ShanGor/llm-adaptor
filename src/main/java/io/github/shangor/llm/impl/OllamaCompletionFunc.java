@@ -43,7 +43,7 @@ public class OllamaCompletionFunc extends LlmCompletionFunc {
 
     @Override
     public OpenAiLlmResult complete(List<CompletionMessage> messages, Options options) {
-        var ollamaResult = httpService.post(url, headers, Map.of("model", model,
+        var ollamaResult = httpService.post(url, headers, Map.of("model", LlmCompletionFunc.getModel(options, model),
                 "messages", messages,
                 "stream", options.isStream(),
                 "options", options), OllamaResult.class);
@@ -66,7 +66,7 @@ public class OllamaCompletionFunc extends LlmCompletionFunc {
     public Flux<ServerSentEvent<OpenAiLlmStreamResult>> completeStream(List<CompletionMessage> messages, Options options) {
         options.setStream(true);
         var requestId = UUID.randomUUID().toString();
-        return httpService.postSeverSentEvent(url, null, Map.of("model", model,
+        return httpService.postSeverSentEvent(url, null, Map.of("model", LlmCompletionFunc.getModel(options, model),
                 "messages", messages,
                 "stream", true,
                 "options", options), true).mapNotNull(sse -> {
