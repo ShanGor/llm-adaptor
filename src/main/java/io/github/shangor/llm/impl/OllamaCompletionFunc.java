@@ -160,6 +160,12 @@ public class OllamaCompletionFunc extends LlmCompletionFunc {
         protected Long evalDuration;
     }
 
+    @EqualsAndHashCode(callSuper = true)
+    @Data
+    public static class OllamaOptions extends Options {
+        private Integer num_predict;
+    }
+
     @Data
     public static class OllamaRequest {
         private String model;
@@ -170,6 +176,15 @@ public class OllamaCompletionFunc extends LlmCompletionFunc {
 
         public static OllamaRequest fromOpenAiRequest(OpenAiCompletionRequest request) {
             var ollamaRequest = new OllamaRequest();
+            var options = new OllamaOptions();
+            ollamaRequest.setOptions(options);
+            if (request.getTemperature() != null) {
+                options.setTemperature(request.getTemperature());
+            }
+            if (request.getMax_completion_tokens() != null) {
+                options.setNum_predict(request.getMax_completion_tokens());
+            }
+
             ollamaRequest.setModel(request.getModel());
 
             ollamaRequest.setFormat(request.getFormat());
