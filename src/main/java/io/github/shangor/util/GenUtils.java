@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import java.util.Collection;
 import java.util.Map;
@@ -17,6 +18,7 @@ public class GenUtils {
         objectMapperSnake.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         objectMapperSnake.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
         objectMapperSnake.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        objectMapperSnake.registerModule(new JavaTimeModule());
     }
 
 
