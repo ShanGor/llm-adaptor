@@ -52,28 +52,23 @@ public class ZhipuCompletionFunc extends LlmCompletionFunc {
 
     @Override
     public OpenAiLlmResult complete(List<CompletionMessage> messages, Options options) {
-        log.info("Zhipu request with messages list {}", messages.size());
+        log.debug("Zhipu request with messages list {}", messages.size());
         var tk = TimeKeeper.start();
         var result = httpService.post(url, headers,
-                Map.of("model", LlmCompletionFunc.getModel(options, model),
-                        "messages", messages,
-                        "temperature", options.getTemperature(),
-                        "stream", options.isStream()),
+                buildRequestParams(options, messages, options.isStream()),
                 OpenAiLlmResult.class);
-        log.info("Zhipu response from {} in {} seconds", url, tk.elapsedSeconds());
+        log.debug("Zhipu response from {} in {} seconds", url, tk.elapsedSeconds());
         return result;
     }
 
     @Override
     public Flux<ServerSentEvent<OpenAiLlmStreamResult>> completeStream(List<CompletionMessage> messages, Options options) {
-        log.info("Zhipu request with messages list {}", messages.size());
+        log.debug("Async Zhipu request with messages list {}", messages.size());
         AtomicReference<String> requestId = new AtomicReference<>("");
         AtomicReference<OpenAiLlmResult.Usage> usage = new AtomicReference<>(null);
         return httpService.postSeverSentEvent(url, headers,
-                Map.of("model", LlmCompletionFunc.getModel(options, model),
-                        "messages", messages,
-                        "temperature", options.getTemperature(),
-                        "stream", true), false)
+                buildRequestParams(options, messages, true),
+                false)
                 .mapNotNull(sse -> {
                     var data = sse.data();
                     if ("[DONE]".equals(data)) {
@@ -94,6 +89,12 @@ public class ZhipuCompletionFunc extends LlmCompletionFunc {
 
     public static Pattern KW_JSON_PATTERN = Pattern.compile("\\{[\\s\\S]*}");
 
-
-
+    private Map<String, Object> buildRequestParams(Options options, List<CompletionMessage> messages, boolean stream) {
+        return Map.of(
+                "model", LlmCompletionFunc.getModel(options, model),
+                "messages", messages,
+                "temperature", options.getTemperature(),
+                "stream", stream
+        );
+    }
 }
