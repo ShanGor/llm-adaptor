@@ -1,5 +1,6 @@
 package io.github.shangor.llm;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import io.github.shangor.llm.pojo.OpenAiLlmResult;
 import io.github.shangor.llm.pojo.OpenAiLlmStreamResult;
 import io.micrometer.common.util.StringUtils;
@@ -14,6 +15,7 @@ import java.net.URI;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 @Data
 public abstract class LlmCompletionFunc {
@@ -69,6 +71,7 @@ public abstract class LlmCompletionFunc {
         protected Double temperature = 1.0;
         protected boolean stream = false;
         protected String model;
+        protected List<ToolCall> tools;
     }
 
     @Data
@@ -81,4 +84,33 @@ public abstract class LlmCompletionFunc {
         private List<String> images;
     }
 
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ToolCall {
+        private String id;
+        private String type;
+        private String name;
+        private Map<String, Object> arguments;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ToolCallResponse {
+        private ToolCallFunction function;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ToolCallFunction {
+        private String name;
+        private Map<String, Object> arguments;
+    }
+
+    public abstract OpenAiLlmResult completeWithTools(List<CompletionMessage> messages, Options options);
 }

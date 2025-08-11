@@ -1,5 +1,6 @@
 package io.github.shangor.llm.impl;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.shangor.llm.LlmCompletionFunc;
@@ -22,6 +23,7 @@ import reactor.core.publisher.Flux;
 
 import java.net.URI;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
@@ -62,9 +64,31 @@ public class OllamaCompletionFunc extends LlmCompletionFunc {
     }
 
     @Override
+    public OpenAiLlmResult completeWithTools(List<CompletionMessage> messages, Options options) {
+        var ollamaResult = httpService.post(url, headers, Map.of("model", LlmCompletionFunc.getModel(options, model),
+                "messages", messages,
+                "stream", options.isStream(),
+                "tools", options.getTools()), OllamaResult.class);
+        var result = new OpenAiLlmResult();
+        var usage = new OpenAiLlmResult.Usage();
+        usage.setTotal_tokens(ollamaResult.getEvalCount() + ollamaResult.getPromptEvalCount());
+        usage.setPrompt_tokens(ollamaResult.getPromptEvalCount());
+        usage.setCompletion_tokens(ollamaResult.getEvalCount());
+        result.setUsage(usage);
+        var choice = new OpenAiLlmResult.Choice();
+        choice.setIndex(0);
+        choice.setMessage(ollamaResult.getMessage());
+        choice.setFinish_reason(ollamaResult.getDoneReason());
+        result.setModel(model);
+        result.setCreated(DateTimeUtils.parseOllamaDateTime(ollamaResult.getCreatedAt()));
+        return result;
+    }
+
+    @Override
     public Flux<ServerSentEvent<OpenAiLlmStreamResult>> completeStream(List<CompletionMessage> messages, Options options) {
         options.setStream(true);
         var requestId = UUID.randomUUID().toString();
+        var thinking = new AtomicBoolean(false);
         return httpService.postSeverSentEvent(url, null, Map.of("model", LlmCompletionFunc.getModel(options, model),
                 "messages", messages,
                 "stream", true,
@@ -85,6 +109,19 @@ public class OllamaCompletionFunc extends LlmCompletionFunc {
                         usage.setCompletion_tokens(obj.getEvalCount().intValue());
                         res.setUsage(usage);
                     }
+                    if (StringUtils.isNotEmpty(obj.message.getThinking())) {
+                        if (!thinking.get()) {
+                            thinking.set(true);
+                            obj.getMessage().setContent("<think>" + obj.message.getThinking());
+                        } else {
+                            obj.getMessage().setContent(obj.message.getThinking());
+                        }
+                    }
+                    if (thinking.get() && StringUtils.isEmpty(obj.message.getThinking())) {
+                        thinking.set(false);
+                        obj.getMessage().setContent("</think>\n" + obj.message.getContent());
+                    }
+
                     var choice = new OpenAiLlmStreamResult.Choice();
                     choice.setIndex(0);
                     choice.setDelta(obj.getMessage());
@@ -117,7 +154,7 @@ public class OllamaCompletionFunc extends LlmCompletionFunc {
     @Data
     public static class OllamaResult{
         private String model;
-        private CompletionMessage message;
+        private OllamaCompletionMessage message;
         private boolean done;
         @JsonProperty("created_at")
         protected String createdAt;
@@ -142,7 +179,7 @@ public class OllamaCompletionFunc extends LlmCompletionFunc {
         protected String model;
         @JsonProperty("created_at")
         protected String createdAt;
-        protected CompletionMessage message;
+        protected OllamaCompletionMessage message;
         protected boolean done;
         @JsonProperty("done_reason")
         protected String doneReason;
@@ -166,6 +203,14 @@ public class OllamaCompletionFunc extends LlmCompletionFunc {
         private Integer num_predict;
     }
 
+    @EqualsAndHashCode(callSuper = true)
+    @Data
+    public static class OllamaCompletionMessage extends CompletionMessage {
+        private String thinking;
+        @JsonAlias("tool_calls")
+        private List<ToolCallResponse> toolCalls;
+    }
+
     @Data
     public static class OllamaRequest {
         private String model;
@@ -173,6 +218,7 @@ public class OllamaCompletionFunc extends LlmCompletionFunc {
         private String format = "text"; // could be "json" or "text"
         private boolean stream;
         private Options options;
+        private List<ToolCall> tools;
 
         public static OllamaRequest fromOpenAiRequest(OpenAiCompletionRequest request) {
             var ollamaRequest = new OllamaRequest();

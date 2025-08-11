@@ -5,6 +5,7 @@ import io.github.shangor.llm.LlmCompletionFunc;
 import io.github.shangor.llm.pojo.OpenAiLlmResult;
 import io.github.shangor.llm.pojo.OpenAiLlmStreamResult;
 import io.github.shangor.llm.service.HttpService;
+import java.util.HashMap;
 import io.github.shangor.util.GenUtils;
 import io.github.shangor.util.TimeKeeper;
 import jakarta.annotation.Resource;
@@ -62,20 +63,31 @@ public class ZhipuCompletionFunc extends LlmCompletionFunc {
     }
 
     @Override
+    public OpenAiLlmResult completeWithTools(List<CompletionMessage> messages, Options options) {
+        log.debug("Zhipu request with messages list {}", messages.size());
+        var tk = TimeKeeper.start();
+        var result = httpService.post(url, headers,
+                buildRequestParams(options, messages, options.isStream()),
+                OpenAiLlmResult.class);
+        log.debug("Zhipu response from {} in {} seconds", url, tk.elapsedSeconds());
+        return result;
+    }
+
+    @Override
     public Flux<ServerSentEvent<OpenAiLlmStreamResult>> completeStream(List<CompletionMessage> messages, Options options) {
         log.debug("Async Zhipu request with messages list {}", messages.size());
         AtomicReference<String> requestId = new AtomicReference<>("");
         AtomicReference<OpenAiLlmResult.Usage> usage = new AtomicReference<>(null);
         return httpService.postSeverSentEvent(url, headers,
-                buildRequestParams(options, messages, true),
-                false)
+                        buildRequestParams(options, messages, true),
+                        false)
                 .mapNotNull(sse -> {
                     var data = sse.data();
                     if ("[DONE]".equals(data)) {
                         return null;
                     }
                     return GenUtils.jsonToObject(data, OpenAiLlmStreamResult.class);
-        }).map(s -> ServerSentEvent.builder(s).id(requestId.get()).event("llm").build());
+                }).map(s -> ServerSentEvent.builder(s).id(requestId.get()).event("llm").build());
     }
 
     /**
@@ -90,11 +102,14 @@ public class ZhipuCompletionFunc extends LlmCompletionFunc {
     public static Pattern KW_JSON_PATTERN = Pattern.compile("\\{[\\s\\S]*}");
 
     private Map<String, Object> buildRequestParams(Options options, List<CompletionMessage> messages, boolean stream) {
-        return Map.of(
-                "model", LlmCompletionFunc.getModel(options, model),
-                "messages", messages,
-                "temperature", options.getTemperature(),
-                "stream", stream
-        );
+        Map<String, Object> params = new HashMap<>();
+        params.put("model", LlmCompletionFunc.getModel(options, model));
+        params.put("messages", messages);
+        params.put("temperature", options.getTemperature());
+        params.put("stream", stream);
+        if (options.getTools() != null && !options.getTools().isEmpty()) {
+            params.put("tools", options.getTools());
+        }
+        return params;
     }
 }
